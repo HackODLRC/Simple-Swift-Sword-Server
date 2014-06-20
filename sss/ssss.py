@@ -2929,7 +2929,12 @@ class DAO(object):
     def get_collection_names(self):
         """ list all the collections in the store """
         return [os.environ['OS_TENANT_NAME']]        
-
+  
+    def get_containers(self):
+        connection = self.get_swift_connection()
+        containers = connection.get_account()
+        return [x['name'] for x in containers[1]]
+  
     def collection_exists(self, collection):
         """
         Does the specified collection exist?
@@ -2988,10 +2993,11 @@ class DAO(object):
         """
         Shortcut to save the content to the filepath with the associated file handle opts (defaults to "w", so pass
         in "wb" for binary files
+        TODO fix the bad
         """
-        f = open(filepath, opts)
-        f.write(content)
-        f.close()
+        connection = self.get_swift_connection()
+        parts = os.path.normpath(filepath).split(os.path.seperator)
+        connection.put_object(parts[-2], parts[-1], content)
 
     def get_filename(self, filename):
         """
@@ -3129,7 +3135,7 @@ class DAO(object):
         sfile = os.path.join(self.configuration.store_dir, collection, id, "sss_statement.xml")
         s = Statement()
         s.load(sfile)
-        return s
+        return None 
 
     def list_content(self, collection, id, exclude=[]):
         """
@@ -3137,7 +3143,11 @@ class DAO(object):
         exclude list.  This method will also not list sss specific files, thus limiting it to the content files of
         the object.
         """
-        connection = self.get_swift_connection():
+        connection = self.get_swift_connection()
+        import pprint
+        pprint.pprint(connection.get_container(id, full_listing=True))
+        return ['1']
+
             
 
 
@@ -3419,7 +3429,7 @@ class CollectionPage(WebPage):
         
         # list all of the containers in the collection
         cpath = self.dao.get_store_path(id)
-        containers = os.listdir(cpath)
+        containers = self.dao.get_containers()
         frag += "<h2>Containers</h2><ul>"
         for container in containers:
             frag += "<li><a href=\"" + self.um.html_url(id, container) + "\">" + container + "</a></li>"
