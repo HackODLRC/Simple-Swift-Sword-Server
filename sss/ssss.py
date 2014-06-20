@@ -2928,9 +2928,7 @@ class DAO(object):
 
     def get_collection_names(self):
         """ list all the collections in the store """
-        connection = self.get_swift_connection()                                 
-        containers = connection.get_account(full_listing=True) 
-        return [x['name'] for x in containers[1]]        
+        return [os.environ['OS_TENANT_NAME']]        
 
     def collection_exists(self, collection):
         """
@@ -2939,9 +2937,10 @@ class DAO(object):
         -collection:    the Collection name
         Returns true or false
         """
-        connection = self.get_swift_connection()
-        container_names = [x['name'] for x in connection.get_account(full_listing=True)[1]] 
-        return collection in container_names 
+	if collection == os.environ['OS_TENANT_NAME']:
+            return True
+        else:
+            return False
 
     def container_exists(self, collection, id):
         """
@@ -2954,7 +2953,7 @@ class DAO(object):
         """
         connection = self.get_swift_connection()
         try:
-            head_response = connection.head_object(collection, id)
+            head_response = connection.head_container(id)
         except swiftclient.exceptions.ClientException:
             return False
         else:
@@ -2963,7 +2962,7 @@ class DAO(object):
     def file_exists(self, collection, id, filename):
         connection = self.get_swift_connection()
         try:
-            head_response = connection.head_object(collection+id, filename)
+            head_response = connection.head_object(id, filename)
         except swiftclient.exceptions.ClientException:
             return False
         else:
@@ -2981,9 +2980,8 @@ class DAO(object):
         # we may have been passed an ID to use
         if id is None:
             id = str(uuid.uuid4())
-        odir = os.path.join(self.configuration.store_dir, collection, id)
-        if not os.path.exists(odir):
-            os.makedirs(odir)
+        connection = self.get_swift_connection()
+        connection.put_container(id) 
         return id
 
     def save(self, filepath, content, opts="w"):

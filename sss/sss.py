@@ -64,7 +64,7 @@ format=%(asctime)s - %(name)s - %(levelname)s - %(message)s
 class Configuration(object):
     def __init__(self):
         # The base url of the webservice where SSS is deployed
-        self.base_url = "http://localhost:%s/" % (sys.argv[1] if len(sys.argv) > 1 else '8080')
+        self.base_url = "http://192.168.77.2:%s/" % (sys.argv[1] if len(sys.argv) > 1 else '8080')
 
         # The number of collections that SSS will create and give to users to deposit content into
         self.num_collections = 10
