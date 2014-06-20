@@ -2914,23 +2914,22 @@ class DAO(object):
 
         self.ns = Namespaces()
         self.mdmap = {None : self.ns.DC_NS}
+    
+    def get_swift_connection(self):
+        os_options = {'region_name':os.environ['OS_REGION_NAME']}
+        return swiftclient.client.Connection(
+                      authurl = os.environ['OS_AUTH_URL'],
+                      user = os.environ['OS_USERNAME'],
+                      key = os.environ['OS_PASSWORD'],
+                      auth_version = 2,
+                      tenant_name = os.environ['OS_TENANT_NAME'],
+                      os_options = os_options
+                   )
 
     def get_collection_names(self):
         """ list all the collections in the store """
-        os_options = {'region_name':os.environ['OS_REGION_NAME']}
-        connection = swiftclient.client.Connection(
-                                           authurl = os.environ['OS_AUTH_URL'],
-                                           user = os.environ['OS_USERNAME'],
-                                           key = os.environ['OS_PASSWORD'],
-                                           auth_version = 2, 
-                                           tenant_name = os.environ['OS_TENANT_NAME'],
-                                           os_options = os_options
-                                        ) 
+        connection = self.get_swift_connection()                                 
         containers = connection.get_account(full_listing=True) 
-        
-        import pprint
-        pprint.pprint(containers)
-        print containers[1]
         return [x['name'] for x in containers[1]]        
 
     def collection_exists(self, collection):
@@ -2940,8 +2939,9 @@ class DAO(object):
         -collection:    the Collection name
         Returns true or false
         """
-        cdir = os.path.join(self.configuration.store_dir, collection)
-        return os.path.exists(cdir)
+        connection = self.get_swift_connection()
+        container_names = [x['name'] for x in connection.get_account(full_listing=True)[1]] 
+        return collection in container_names 
 
     def container_exists(self, collection, id):
         """
@@ -2952,12 +2952,22 @@ class DAO(object):
         -id:    the container id
         Returns true or false
         """
-        odir = os.path.join(self.configuration.store_dir, collection, id)
-        return os.path.exists(odir)
+        connection = self.get_swift_connection()
+        try:
+            head_response = connection.head_object(collection, id)
+        except swiftclient.exceptions.ClientException:
+            return False
+        else:
+            return True
 
     def file_exists(self, collection, id, filename):
-        fpath = os.path.join(self.configuration.store_dir, collection, id, filename)
-        return os.path.exists(fpath)
+        connection = self.get_swift_connection()
+        try:
+            head_response = connection.head_object(collection+id, filename)
+        except swiftclient.exceptions.ClientException:
+            return False
+        else:
+            return True
 
     def create_container(self, collection, id=None):
         """
@@ -3129,10 +3139,9 @@ class DAO(object):
         exclude list.  This method will also not list sss specific files, thus limiting it to the content files of
         the object.
         """
-        cdir = os.path.join(self.configuration.store_dir, collection)
-        odir = os.path.join(cdir, id)
-        cfiles = [f for f in os.listdir(odir) if not f.startswith("sss_") and not f in exclude]
-        return cfiles
+        connection = self.get_swift_connection():
+            
+
 
 # DISSEMINATION PACKAGING
 #######################################################################
